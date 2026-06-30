@@ -35,6 +35,36 @@ type UpdaterConfig struct {
 	RewardsCoordinatorAddress string      `mapstructure:"rewards_coordinator_address"`
 	SidecarRpcUrl             string      `mapstructure:"sidecar_rpc_url"`
 	SidecarInsecureRpc        bool        `mapstructure:"sidecar_insecure_rpc"`
+	// SignerType selects how the submitRoot transaction is signed:
+	// "private_key" (default) or "aws_kms".
+	SignerType string `mapstructure:"signer_type"`
+	// KMSKeyID is the AWS KMS key id or ARN (required when SignerType=aws_kms).
+	KMSKeyID string `mapstructure:"kms_key_id"`
+	// AWSRegion is the AWS region for the KMS key. Optional; falls back to the
+	// standard AWS config/credential chain when empty.
+	AWSRegion string `mapstructure:"aws_region"`
+}
+
+const (
+	SignerTypePrivateKey = "private_key"
+	SignerTypeAWSKMS     = "aws_kms"
+)
+
+// Validate checks signer-related config consistency.
+func (c *UpdaterConfig) Validate() error {
+	switch c.SignerType {
+	case "", SignerTypePrivateKey:
+		if c.PrivateKey == "" {
+			return errors.New("private_key is required when signer_type is private_key")
+		}
+	case SignerTypeAWSKMS:
+		if c.KMSKeyID == "" {
+			return errors.New("kms_key_id is required when signer_type is aws_kms")
+		}
+	default:
+		return fmt.Errorf("unknown signer_type %q (expected %q or %q)", c.SignerType, SignerTypePrivateKey, SignerTypeAWSKMS)
+	}
+	return nil
 }
 
 type DistributionConfig struct {
@@ -139,6 +169,9 @@ func NewUpdaterConfig() *UpdaterConfig {
 		RewardsCoordinatorAddress: viper.GetString("rewards_coordinator_address"),
 		SidecarRpcUrl:             viper.GetString("sidecar_rpc_url"),
 		SidecarInsecureRpc:        viper.GetBool("sidecar_insecure_rpc"),
+		SignerType:                viper.GetString("signer_type"),
+		KMSKeyID:                  viper.GetString("kms_key_id"),
+		AWSRegion:                 viper.GetString("aws_region"),
 	}
 	return updaterConfig
 }

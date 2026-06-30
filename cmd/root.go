@@ -44,6 +44,9 @@ func init() {
 	rootCmd.PersistentFlags().String("proof-store-base-url", "", "HTTP base url where data is stored")
 	rootCmd.PersistentFlags().String("sidecar-rpc-url", "", "Sidecar RPC URL")
 	rootCmd.PersistentFlags().Bool("sidecar-insecure-rpc", false, "Use insecure gRPC connection to sidecar")
+	rootCmd.PersistentFlags().String("signer-type", "private_key", "How to sign submitRoot txns: 'private_key' or 'aws_kms'")
+	rootCmd.PersistentFlags().String("kms-key-id", "", "AWS KMS key id or ARN (required when signer-type=aws_kms)")
+	rootCmd.PersistentFlags().String("aws-region", "", "AWS region for the KMS key (optional; falls back to AWS config/credential chain)")
 	rootCmd.PersistentFlags().Bool("pushgateway-enabled", false, "Enable/disable pushgateway metrics collection")
 	rootCmd.PersistentFlags().String("pushgateway-url", "", "URL to use for Pushgateway. This option is ignored if pushgateway-enable is not set.")
 
