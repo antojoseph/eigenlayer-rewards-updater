@@ -33,7 +33,7 @@ func runUpdater(ctx context.Context, cfg *config.UpdaterConfig, logger *zap.Logg
 
 	ethClient, err := ethclient.Dial(cfg.RPCUrl)
 	if err != nil {
-		logger.Sugar().Errorf("Failed to create new eth client", zap.Error(err))
+		logger.Sugar().Errorw("Failed to create new eth client", zap.Error(err))
 		return err
 	}
 
@@ -48,19 +48,19 @@ func runUpdater(ctx context.Context, cfg *config.UpdaterConfig, logger *zap.Logg
 
 	sidecarClient, err := sidecar.NewSidecarClient(cfg.SidecarRpcUrl, cfg.SidecarInsecureRpc)
 	if err != nil {
-		logger.Sugar().Errorf("Failed to create sidecar client", zap.Error(err))
+		logger.Sugar().Errorw("Failed to create sidecar client", zap.Error(err))
 		return err
 	}
 
 	transactor, err := services.NewTransactor(cc, gethcommon.HexToAddress(cfg.RewardsCoordinatorAddress))
 	if err != nil {
-		logger.Sugar().Errorf("Failed to initialize transactor", zap.Error(err))
+		logger.Sugar().Errorw("Failed to initialize transactor", zap.Error(err))
 		return err
 	}
 
 	u, err := updater.NewUpdater(transactor, sidecarClient, logger)
 	if err != nil {
-		logger.Sugar().Errorf("Failed to create updater", zap.Error(err))
+		logger.Sugar().Errorw("Failed to create updater", zap.Error(err))
 		return err
 	}
 

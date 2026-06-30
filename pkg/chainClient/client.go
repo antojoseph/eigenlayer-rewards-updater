@@ -161,7 +161,7 @@ func (c *ChainClient) EstimateGasPriceAndLimitAndSendTx(
 	}
 	opts := &bind.TransactOpts{
 		From:      c.AccountAddress,
-		Signer:    c.signer.SignerFn(tx.ChainId()),
+		Signer:    c.signer.SignerFn(c.chainID),
 		Context:   ctx,
 		Nonce:     new(big.Int).SetUint64(tx.Nonce()),
 		GasTipCap: gasTipCap,

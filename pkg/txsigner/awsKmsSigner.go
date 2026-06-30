@@ -171,11 +171,11 @@ func recoverEthereumSignature(expectedPublicKeyBytes, txHash, r, s []byte) ([]by
 		if err != nil {
 			continue
 		}
-		if hex.EncodeToString(recovered) == hex.EncodeToString(expectedPublicKeyBytes) {
+		if bytes.Equal(recovered, expectedPublicKeyBytes) {
 			return signature, nil
 		}
 	}
-	return nil, fmt.Errorf("recovered public key does not match expected KMS public key")
+	return nil, fmt.Errorf("no recovery id matched expected KMS public key %s", hex.EncodeToString(expectedPublicKeyBytes))
 }
 
 func adjustSignatureLength(buffer []byte) []byte {
