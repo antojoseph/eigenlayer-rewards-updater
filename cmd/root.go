@@ -47,6 +47,7 @@ func init() {
 	rootCmd.PersistentFlags().String("signer-type", "private_key", "How to sign submitRoot txns: 'private_key' or 'aws_kms'")
 	rootCmd.PersistentFlags().String("kms-key-id", "", "AWS KMS key id or ARN (required when signer-type=aws_kms)")
 	rootCmd.PersistentFlags().String("aws-region", "", "AWS region for the KMS key (optional; falls back to AWS config/credential chain)")
+	rootCmd.PersistentFlags().Bool("wait-for-rewards-generation", true, "Block until the sidecar finishes generating rewards (WaitForComplete). Set false to rely on an external refresher and skip a run when the root isn't ready yet.")
 	rootCmd.PersistentFlags().Bool("pushgateway-enabled", false, "Enable/disable pushgateway metrics collection")
 	rootCmd.PersistentFlags().String("pushgateway-url", "", "URL to use for Pushgateway. This option is ignored if pushgateway-enable is not set.")
 

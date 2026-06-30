@@ -17,17 +17,25 @@ type Updater struct {
 	transactor    services.Transactor
 	logger        *zap.Logger
 	sidecarClient *sidecar.SidecarClient
+	// waitForGeneration controls whether GenerateRewards blocks until the sidecar
+	// finishes computing rewards for the cutoff (WaitForComplete). When false, the
+	// updater relies on an external generator (e.g. the sidecar-rewards-refresher
+	// cron) and skips the run if the root isn't ready yet, instead of blocking for
+	// the full multi-hour mainnet computation.
+	waitForGeneration bool
 }
 
 func NewUpdater(
 	transactor services.Transactor,
 	sc *sidecar.SidecarClient,
 	logger *zap.Logger,
+	waitForGeneration bool,
 ) (*Updater, error) {
 	return &Updater{
-		transactor:    transactor,
-		logger:        logger,
-		sidecarClient: sc,
+		transactor:        transactor,
+		logger:            logger,
+		sidecarClient:     sc,
+		waitForGeneration: waitForGeneration,
 	}, nil
 }
 
@@ -41,10 +49,15 @@ func (u *Updater) Update(ctx context.Context) (*UpdatedRoot, error) {
 	span, ctx := ddTracer.StartSpanFromContext(ctx, "updater::Update")
 	defer span.Finish()
 
-	u.logger.Sugar().Infow("Generating a new rewards snapshot (this may take a while, please wait)")
+	u.logger.Sugar().Infow("Resolving latest rewards snapshot",
+		zap.Bool("wait_for_generation", u.waitForGeneration),
+	)
+	// WaitForComplete=false resolves the latest cutoff and ensures generation is
+	// enqueued, but returns immediately rather than blocking for the (multi-hour
+	// on mainnet) computation. WaitForComplete=true preserves the prior behavior.
 	res, err := u.sidecarClient.Rewards.GenerateRewards(ctx, &rewardsV1.GenerateRewardsRequest{
 		RespondWithRewardsData: false,
-		WaitForComplete:        true,
+		WaitForComplete:        u.waitForGeneration,
 		CutoffDate:             "latest",
 	})
 	if err != nil {
@@ -58,6 +71,19 @@ func (u *Updater) Update(ctx context.Context) (*UpdatedRoot, error) {
 		CutoffDate: res.CutoffDate,
 	})
 	if err != nil {
+		// When we don't block on generation, the root may simply not be computed
+		// yet (the refresher is still running). Treat that as a healthy skip rather
+		// than a failure, so the daily cron doesn't alarm; the next run (after the
+		// refresher completes) will post it.
+		if !u.waitForGeneration {
+			u.logger.Sugar().Warnw("Rewards root not available yet; skipping this run (generation may still be in progress)",
+				zap.String("cutoffDate", res.CutoffDate),
+				zap.Error(err),
+			)
+			metrics.GetStatsdClient().Incr(metrics.Counter_UpdateNoUpdate, nil, 1)
+			metrics.IncCounterUpdateRun(metrics.CounterUpdateRunsNoUpdate)
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to generate rewards root: %w", err)
 	}
 

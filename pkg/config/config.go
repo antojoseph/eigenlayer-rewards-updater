@@ -43,6 +43,11 @@ type UpdaterConfig struct {
 	// AWSRegion is the AWS region for the KMS key. Optional; falls back to the
 	// standard AWS config/credential chain when empty.
 	AWSRegion string `mapstructure:"aws_region"`
+	// WaitForRewardsGeneration controls whether the updater blocks until the
+	// sidecar finishes generating rewards (WaitForComplete). Default true preserves
+	// prior behavior. Set false to rely on an external refresher and skip the run
+	// when data isn't ready yet, instead of blocking on the heavy mainnet generation.
+	WaitForRewardsGeneration bool `mapstructure:"wait_for_rewards_generation"`
 }
 
 const (
@@ -172,6 +177,7 @@ func NewUpdaterConfig() *UpdaterConfig {
 		SignerType:                viper.GetString("signer_type"),
 		KMSKeyID:                  viper.GetString("kms_key_id"),
 		AWSRegion:                 viper.GetString("aws_region"),
+		WaitForRewardsGeneration:  viper.GetBool("wait_for_rewards_generation"),
 	}
 	return updaterConfig
 }
