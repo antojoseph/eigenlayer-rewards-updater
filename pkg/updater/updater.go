@@ -83,7 +83,32 @@ func (u *Updater) Update(ctx context.Context) (*UpdatedRoot, error) {
 		zap.Int64("calculated_until_timestamp", rewardsCalcEnd.Unix()),
 		zap.String("calculated_until_date", rewardsCalcEnd.Format(time.DateOnly)),
 	)
-	if err := u.transactor.SubmitRoot(ctx, [32]byte(rootBytes), uint32(rewardsCalcEnd.Unix())); err != nil {
+
+	// Skip submission when the computed root is not newer than what is already
+	// on-chain. The contract requires a strictly newer rewardsCalculationEndTimestamp,
+	// so submitting an equal/older one would revert. Treating this as a successful
+	// no-op (rather than a failed submit) keeps the daily cron's exit status and
+	// metrics honest: real failures stay distinguishable from "nothing to do".
+	newCalcEnd := uint32(rewardsCalcEnd.Unix())
+	currentCalcEnd, err := u.transactor.CurrRewardsCalculationEndTimestamp()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current rewards calculation end timestamp: %w", err)
+	}
+	if newCalcEnd <= currentCalcEnd {
+		u.logger.Sugar().Infow("No new rewards root to submit; on-chain root is already current",
+			zap.Uint32("on_chain_calc_end", currentCalcEnd),
+			zap.Uint32("computed_calc_end", newCalcEnd),
+			zap.String("root", rootRes.RewardsRoot),
+		)
+		metrics.GetStatsdClient().Incr(metrics.Counter_UpdateNoUpdate, nil, 1)
+		metrics.IncCounterUpdateRun(metrics.CounterUpdateRunsNoUpdate)
+		return &UpdatedRoot{
+			SnapshotDate: rootRes.RewardsCalcEndDate,
+			Root:         rootRes.RewardsRoot,
+		}, nil
+	}
+
+	if err := u.transactor.SubmitRoot(ctx, [32]byte(rootBytes), newCalcEnd); err != nil {
 		metrics.GetStatsdClient().Incr(metrics.Counter_UpdateFails, nil, 1)
 		metrics.IncCounterUpdateRun(metrics.CounterUpdateRunsFailed)
 		u.logger.Sugar().Errorw("Failed to submit root", zap.Error(err))

@@ -72,10 +72,41 @@ func TestUpdaterUpdate(t *testing.T) {
 
 	expectedRootBytes, _ := utils.ConvertStringToBytes(expectedRoot)
 
+	// on-chain root is older than the computed one -> submit proceeds
+	mockTransactor.On("CurrRewardsCalculationEndTimestamp").Return(uint32(expectedSnapshotDateTime.Unix())-uint32(7*24*3600), nil)
 	mockTransactor.On("SubmitRoot", mock.Anything, [32]byte(expectedRootBytes), uint32(expectedSnapshotDateTime.Unix())).Return(nil)
 
 	updatedRoot, err := updater.Update(ctx)
 	assert.Nil(t, err)
 	assert.Equal(t, expectedRoot, updatedRoot.Root)
 	assert.Equal(t, "2024-10-31", updatedRoot.SnapshotDate)
+	mockTransactor.AssertExpectations(t)
+}
+
+// When the on-chain root is already at (or beyond) the computed cutoff, the
+// updater must NOT submit, and must return success (a healthy no-op).
+func TestUpdaterUpdate_NoNewRoot(t *testing.T) {
+	_, _ = metrics.InitStatsdClient("", false)
+
+	mt := mocktracer.Start()
+	defer mt.Stop()
+	span, ctx := ddTracer.StartSpanFromContext(context.Background(), "TestUpdaterUpdate_NoNewRoot")
+	defer span.Finish()
+
+	l, _ := logger.NewLogger(&logger.LoggerConfig{Debug: true})
+	mockTransactor := &mocks.Transactor{}
+	mockSidecarClient := &sidecar.SidecarClient{Rewards: &mockRewardsClient{}}
+
+	u, err := updater.NewUpdater(mockTransactor, mockSidecarClient, l)
+	assert.Nil(t, err)
+
+	snapshotDateTime, _ := time.Parse(time.DateOnly, "2024-10-31")
+	// on-chain root already at the same cutoff -> nothing to submit
+	mockTransactor.On("CurrRewardsCalculationEndTimestamp").Return(uint32(snapshotDateTime.Unix()), nil)
+
+	updatedRoot, err := u.Update(ctx)
+	assert.Nil(t, err)
+	assert.Equal(t, "0xb4a614cc0bf38dff74822a0744aab5b8897a6868c3b612980436be219a25be21", updatedRoot.Root)
+	assert.Equal(t, "2024-10-31", updatedRoot.SnapshotDate)
+	mockTransactor.AssertNotCalled(t, "SubmitRoot", mock.Anything, mock.Anything, mock.Anything)
 }
