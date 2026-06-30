@@ -58,7 +58,7 @@ func runUpdater(ctx context.Context, cfg *config.UpdaterConfig, logger *zap.Logg
 		return err
 	}
 
-	u, err := updater.NewUpdater(transactor, sidecarClient, logger, cfg.WaitForRewardsGeneration)
+	u, err := updater.NewUpdater(transactor, sidecarClient, logger)
 	if err != nil {
 		logger.Sugar().Errorw("Failed to create updater", zap.Error(err))
 		return err

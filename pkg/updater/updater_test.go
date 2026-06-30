@@ -62,7 +62,7 @@ func TestUpdaterUpdate(t *testing.T) {
 		Rewards: &mockRewardsClient{},
 	}
 
-	updater, err := updater.NewUpdater(mockTransactor, mockSidecarClient, l, true)
+	updater, err := updater.NewUpdater(mockTransactor, mockSidecarClient, l)
 	assert.Nil(t, err)
 
 	expectedRoot := "0xb4a614cc0bf38dff74822a0744aab5b8897a6868c3b612980436be219a25be21"
@@ -97,7 +97,7 @@ func TestUpdaterUpdate_NoNewRoot(t *testing.T) {
 	mockTransactor := &mocks.Transactor{}
 	mockSidecarClient := &sidecar.SidecarClient{Rewards: &mockRewardsClient{}}
 
-	u, err := updater.NewUpdater(mockTransactor, mockSidecarClient, l, true)
+	u, err := updater.NewUpdater(mockTransactor, mockSidecarClient, l)
 	assert.Nil(t, err)
 
 	snapshotDateTime, _ := time.Parse(time.DateOnly, "2024-10-31")
