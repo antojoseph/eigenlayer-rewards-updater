@@ -151,6 +151,7 @@ func GetGlobalConfig() GlobalConfig {
 		Config:             viper.GetString("config"),
 		Debug:              viper.GetBool("debug"),
 		DDStatsdUrl:        viper.GetString("dd_statsd_url"),
+		EnableStatsd:       viper.GetBool("enable_statsd"),
 		EnableTracing:      viper.GetBool("enable_tracing"),
 		PushgatewayEnabled: viper.GetBool("pushgateway_enabled"),
 		PushgatewayUrl:     viper.GetString("pushgateway_url"),
