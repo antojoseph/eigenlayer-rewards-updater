@@ -20,6 +20,7 @@ import (
 	"go.uber.org/zap"
 	ddTracer "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"log"
+	"os"
 )
 
 func runUpdater(ctx context.Context, cfg *config.UpdaterConfig, logger *zap.Logger) error {
@@ -138,15 +139,20 @@ var updaterCmd = &cobra.Command{
 		defer logger.Sync()
 
 		err = runUpdater(ctx, cfg, logger)
+
+		// Flush metrics on ALL exit paths. log.Fatalln/os.Exit skip deferred calls,
+		// so on the failure path the just-emitted update_fails would otherwise be
+		// dropped from the statsd buffer before it's sent (only the early update_runs
+		// would survive). Close() flushes the buffer; do it before exiting.
+		if cerr := s.Close(); cerr != nil {
+			logger.Sugar().Errorw("Failed to close statsd client", zap.Error(cerr))
+		}
+		if perr := metrics.PushToPushgateway(); perr != nil {
+			logger.Sugar().Errorw("Failed to push metrics to pushgateway", zap.Error(perr))
+		}
 		if err != nil {
-			log.Fatalln(err)
-		}
-		if err := s.Close(); err != nil {
-			logger.Sugar().Errorw("Failed to close statsd client", zap.Error(err))
-		}
-		// Push metrics to pushgateway at the end of the run
-		if err := metrics.PushToPushgateway(); err != nil {
-			logger.Sugar().Errorw("Failed to push metrics to pushgateway", zap.Error(err))
+			logger.Sugar().Errorw("Update failed", zap.Error(err))
+			os.Exit(1)
 		}
 	},
 }
