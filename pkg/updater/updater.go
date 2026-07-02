@@ -84,6 +84,25 @@ func (u *Updater) Update(ctx context.Context) (*UpdatedRoot, error) {
 		zap.String("calculated_until_date", rewardsCalcEnd.Format(time.DateOnly)),
 	)
 
+	// Weekly-boundary guard: only ever submit the Sunday-aligned weekly root, never an
+	// intermediate/daily root. The RewardsCoordinator accepts ANY strictly-increasing
+	// timestamp (there are historical non-Sunday roots on-chain), so nothing on-chain
+	// stops a daily root — this guard is the guarantee. Normal operation only computes a
+	// Sunday root anyway (Tuesday-only schedule: calc-end = run_day-2 = Sunday); this
+	// protects against off-schedule/manual runs.
+	if rewardsCalcEnd.Weekday() != time.Sunday {
+		u.logger.Sugar().Warnw("Computed root is not a weekly (Sunday) boundary; skipping without submitting",
+			zap.String("calc_end_date", rootRes.RewardsCalcEndDate),
+			zap.String("weekday", rewardsCalcEnd.Weekday().String()),
+		)
+		metrics.GetStatsdClient().Incr(metrics.Counter_UpdateNoUpdate, nil, 1)
+		metrics.IncCounterUpdateRun(metrics.CounterUpdateRunsNoUpdate)
+		return &UpdatedRoot{
+			SnapshotDate: rootRes.RewardsCalcEndDate,
+			Root:         rootRes.RewardsRoot,
+		}, nil
+	}
+
 	// Skip submission when the computed root is not newer than what is already
 	// on-chain. The contract requires a strictly newer rewardsCalculationEndTimestamp,
 	// so submitting an equal/older one would revert. Treating this as a successful
