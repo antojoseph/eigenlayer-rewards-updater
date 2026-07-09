@@ -35,6 +35,10 @@ type UpdaterConfig struct {
 	RewardsCoordinatorAddress string      `mapstructure:"rewards_coordinator_address"`
 	SidecarRpcUrl             string      `mapstructure:"sidecar_rpc_url"`
 	SidecarInsecureRpc        bool        `mapstructure:"sidecar_insecure_rpc"`
+	// EmissionsControllerAddress is the EmissionsController proxy whose
+	// pressButton(uint256) the keeper command calls weekly. Only required by the
+	// `keeper` command.
+	EmissionsControllerAddress string `mapstructure:"emissions_controller_address"`
 	// SignerType selects how the submitRoot transaction is signed:
 	// "private_key" (default) or "aws_kms".
 	SignerType string `mapstructure:"signer_type"`
@@ -162,17 +166,18 @@ func GetGlobalConfig() GlobalConfig {
 // them in a struct
 func NewUpdaterConfig() *UpdaterConfig {
 	updaterConfig = &UpdaterConfig{
-		GlobalConfig:              GetGlobalConfig(),
-		Environment:               parseEnvironment(viper.GetString("environment")),
-		Network:                   viper.GetString("network"),
-		RPCUrl:                    viper.GetString("rpc_url"),
-		PrivateKey:                viper.GetString("private_key"),
-		RewardsCoordinatorAddress: viper.GetString("rewards_coordinator_address"),
-		SidecarRpcUrl:             viper.GetString("sidecar_rpc_url"),
-		SidecarInsecureRpc:        viper.GetBool("sidecar_insecure_rpc"),
-		SignerType:                viper.GetString("signer_type"),
-		KMSKeyID:                  viper.GetString("kms_key_id"),
-		AWSRegion:                 viper.GetString("aws_region"),
+		GlobalConfig:               GetGlobalConfig(),
+		Environment:                parseEnvironment(viper.GetString("environment")),
+		Network:                    viper.GetString("network"),
+		RPCUrl:                     viper.GetString("rpc_url"),
+		PrivateKey:                 viper.GetString("private_key"),
+		RewardsCoordinatorAddress:  viper.GetString("rewards_coordinator_address"),
+		SidecarRpcUrl:              viper.GetString("sidecar_rpc_url"),
+		SidecarInsecureRpc:         viper.GetBool("sidecar_insecure_rpc"),
+		EmissionsControllerAddress: viper.GetString("emissions_controller_address"),
+		SignerType:                 viper.GetString("signer_type"),
+		KMSKeyID:                   viper.GetString("kms_key_id"),
+		AWSRegion:                  viper.GetString("aws_region"),
 	}
 	return updaterConfig
 }
